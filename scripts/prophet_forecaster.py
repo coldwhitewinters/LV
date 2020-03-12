@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import pandas as pd
-import matplotlib.pyplot as plt
 from scipy.stats import boxcox
 from scipy.special import inv_boxcox
 from fbprophet import Prophet
+from progress_bar import ProgressBar
 
 pd.plotting.register_matplotlib_converters()
 
@@ -18,8 +18,8 @@ class ProphetForecaster:
         n_changepoints=25,
         changepoint_range=0.8,
         yearly_seasonality="auto",
-        weekly_seasonality=False,
-        daily_seasonality=False,
+        weekly_seasonality="auto",
+        daily_seasonality="auto",
         holidays=None,
         seasonality_mode="additive",
         seasonality_prior_scale=10.0,
@@ -53,27 +53,37 @@ class ProphetForecaster:
             "stan_backend":stan_backend }
 
     def fit(self, train_df):
-        for product in train_df.columns:
-            target = train_df[product].dropna()
+        print("Fitting...")
+        progress_bar = ProgressBar(len(train_df.columns))
+        
+        for item in train_df.columns:
+            target = train_df[item].dropna()
             if self.use_boxcox:
                 idx = target.index
-                target, self.lmbda_boxcox[product] = boxcox(target)
+                target, self.lmbda_boxcox[item] = boxcox(target)
                 target = pd.Series(target, index=idx)
             target.index.name = "ds"
             target.name = "y"
             target = target.reset_index()
-            self.models[product] = Prophet(**self.prophet_config)
-            self.models[product].fit(target)
+            self.models[item] = Prophet(**self.prophet_config)
+            self.models[item].fit(target)
+            progress_bar.update()
+        progress_bar.finish()
         return self.models
             
     def predict(self, steps=365, freq="D"):
-        for product, model in self.models.items():
+        print("Forecasting...")
+        progress_bar = ProgressBar(len(self.models.items()))
+        for item, model in self.models.items():
             future = model.make_future_dataframe(steps, freq=freq)
             pred = model.predict(future).set_index("ds")
             pred = pred[["yhat_lower", "yhat", "yhat_upper"]]
-            self.fcst[product] = pred
+            self.fcst[item] = pred
             if self.use_boxcox:
-                self.fcst[product] = inv_boxcox(
-                    self.fcst[product], 
-                    self.lmbda_boxcox[product])
+                self.fcst[item] = inv_boxcox(
+                    self.fcst[item], 
+                    self.lmbda_boxcox[item])
+            progress_bar.update()
+        progress_bar.finish()
         return pd.concat(self.fcst, axis=1)
+    
