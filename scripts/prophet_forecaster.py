@@ -10,47 +10,12 @@ from progress_bar import ProgressBar
 pd.plotting.register_matplotlib_converters()
 
 class ProphetForecaster:
-    def __init__(
-        self,
-        use_boxcox=True,
-        growth="linear",
-        changepoints=None,
-        n_changepoints=25,
-        changepoint_range=0.8,
-        yearly_seasonality="auto",
-        weekly_seasonality="auto",
-        daily_seasonality="auto",
-        holidays=None,
-        seasonality_mode="additive",
-        seasonality_prior_scale=10.0,
-        holidays_prior_scale=10.0,
-        changepoint_prior_scale=0.05,
-        mcmc_samples=0,
-        interval_width=0.8,
-        uncertainty_samples=1000,
-        stan_backend=None):
-    
+    def __init__(self, use_boxcox=True, prophet_config=dict()):
         self.models = dict()
         self.fcst = dict()
         self.lmbda_boxcox = dict()
         self.use_boxcox = use_boxcox
-        self.prophet_config = {
-            "growth":growth,
-            "changepoints":changepoints,
-            "n_changepoints":n_changepoints,
-            "changepoint_range":changepoint_range,
-            "yearly_seasonality":yearly_seasonality,
-            "weekly_seasonality":weekly_seasonality,
-            "daily_seasonality":daily_seasonality,
-            "holidays":holidays,
-            "seasonality_mode":seasonality_mode,
-            "seasonality_prior_scale":seasonality_prior_scale,
-            "holidays_prior_scale":holidays_prior_scale,
-            "changepoint_prior_scale":changepoint_prior_scale,
-            "mcmc_samples":mcmc_samples,
-            "interval_width":interval_width,
-            "uncertainty_samples":uncertainty_samples,
-            "stan_backend":stan_backend }
+        self.prophet_config = prophet_config
 
     def fit(self, train_df):
         print("Fitting...")
