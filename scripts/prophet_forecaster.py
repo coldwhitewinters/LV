@@ -1,13 +1,11 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
+import numpy as np
 import pandas as pd
 from scipy.stats import boxcox
 from scipy.special import inv_boxcox
 from fbprophet import Prophet
-from progress_bar import ProgressBar
-
 pd.plotting.register_matplotlib_converters()
+from progress_bar import ProgressBar
 
 class ProphetForecaster:
     def __init__(self, use_boxcox=True, prophet_config=dict()):
@@ -42,7 +40,7 @@ class ProphetForecaster:
         for item, model in self.models.items():
             future = model.make_future_dataframe(steps, freq=freq)
             pred = model.predict(future).set_index("ds")
-            pred = pred[["yhat_lower", "yhat", "yhat_upper"]]
+            pred = pred[["yhat", "yhat_lower", "yhat_upper"]]
             self.fcst[item] = pred
             if self.use_boxcox:
                 self.fcst[item] = inv_boxcox(
@@ -50,5 +48,5 @@ class ProphetForecaster:
                     self.lmbda_boxcox[item])
             progress_bar.update()
         progress_bar.finish()
-        return pd.concat(self.fcst, axis=1)
-    
+        fcst_df = pd.concat(self.fcst, axis=1).sort_index(axis=1)
+        return fcst_df
