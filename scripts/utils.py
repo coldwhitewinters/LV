@@ -54,3 +54,7 @@ def get_forecastables(df, T=0.5, N=None):
     if N is not None:
         forecastable = forecastable.tail(N)
     return df.loc[:, forecastable.index].copy()
+
+def calculate_error(fcst, test):
+    error = fcst.loc[:, pd.IndexSlice[:, "yhat"]].droplevel(1, axis=1) - test
+    return error
