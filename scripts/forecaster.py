@@ -10,28 +10,36 @@ from utils import ProgressBar
 
 class ProphetForecaster:
     def __init__(
-        self, 
+        self,
         use_boxcox=True,
         yearly_seasonality="auto",
         weekly_seasonality=False,
         daily_seasonality=False,
         confidence_interval=0.8,
+        holidays=None,
+        country_holidays=None,
         **kwargs):
-        
-        self.models = dict()
-        self.fcst = dict()
-        self.lmbda_boxcox = dict()
+
         self.use_boxcox = use_boxcox
         self.yearly_seasonality = yearly_seasonality
         self.weekly_seasonality = weekly_seasonality
         self.daily_seasonality = daily_seasonality
+        self.holidays = holidays
+        self.country_holidays = country_holidays
         self.prophet_config = kwargs
+        self.models = dict()
+        self.fcst = dict()
+        self.lmbda_boxcox = dict()
 
-    def fit(self, train_df):
+    def fit(self, train_df, regressors=None):
         print("Fitting...")
         progress_bar = ProgressBar(len(train_df.columns))
-        
         for item in train_df.columns:
+            self.models[item] = Prophet(
+                yearly_seasonality=self.yearly_seasonality,
+                weekly_seasonality=self.weekly_seasonality,
+                daily_seasonality=self.daily_seasonality,
+                **self.prophet_config)
             target = train_df[item].dropna()
             if self.use_boxcox:
                 idx = target.index
@@ -39,23 +47,26 @@ class ProphetForecaster:
                 target = pd.Series(target, index=idx)
             target.index.name = "ds"
             target.name = "y"
+            if self.country_holidays is not None:
+                self.models[item].add_country_holidays(country_name=self.country_holidays)
+            if regressors is not None:
+                target = pd.merge(target, regressors, left_index=True, right_index=True, how="left")
+                for reg in regressors.columns:
+                    self.models[item].add_regressor(reg)
             target = target.reset_index()
-            self.models[item] = Prophet(
-                yearly_seasonality=self.yearly_seasonality,
-                weekly_seasonality=self.weekly_seasonality,
-                daily_seasonality=self.daily_seasonality,
-                **self.prophet_config)
             self.models[item].fit(target)
             progress_bar.update()
         progress_bar.finish()
         return self.models
             
-    def predict(self, steps, freq="D"):
+    def predict(self, steps, freq="D", regressors=None):
         print("Forecasting...")
         progress_bar = ProgressBar(len(self.models.items()))
         for item, model in self.models.items():
-            future = model.make_future_dataframe(steps, freq=freq)
-            pred = model.predict(future).set_index("ds")
+            future = model.make_future_dataframe(steps, freq=freq).set_index("ds")
+            if regressors is not None:
+                future = pd.merge(future, regressors, left_index=True, right_index=True, how="left")
+            pred = model.predict(future.reset_index()).set_index("ds")
             pred = pred[["yhat", "yhat_lower", "yhat_upper"]]
             self.fcst[item] = pred
             if self.use_boxcox:
@@ -75,15 +86,15 @@ class ARIMAForecaster:
         seasonality=[365.25],
         confidence_interval=0.8,
         **kwargs):
-    
-        self.models = dict()
-        self.fcst = dict()
-        self.lmbda_boxcox = dict()
+        
         self.use_boxcox = use_boxcox
         self.n_fourier_terms = n_fourier_terms
         self.seasonality = seasonality
         self.confidence_interval = confidence_interval
         self.arima_config = kwargs
+        self.models = dict()
+        self.fcst = dict()
+        self.lmbda_boxcox = dict()
 
     def fit(self, train_df):
         self.train_ds = train_df.index
