@@ -12,7 +12,7 @@ class ProphetForecaster:
     def __init__(
         self,
         use_boxcox=True,
-        yearly_seasonality="auto",
+        yearly_seasonality=True,
         weekly_seasonality=False,
         daily_seasonality=False,
         confidence_interval=0.8,
