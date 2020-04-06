@@ -32,17 +32,26 @@ def plot_grid(df, n_cols, figsize):
     n_rows = int(np.ceil(len(df.columns)/n_cols))
     df.plot(subplots=True, layout=(n_rows, n_cols), figsize=figsize)
 
-def plot_fcst(fcst, train=None, test=None, ax=None):
+def plot_fcst(fcst, train=None, test=None, ax=None, title=None):
     lower = fcst.yhat_lower.interpolate()
     upper = fcst.yhat_upper.interpolate()
     if ax is None:
         f, ax = plt.subplots(1, 1)
+    if title is not None:
+        ax.set_title(title)
     if train is not None:
         train.plot(style="k.", ax=ax)
     if test is not None:
         test.plot(style="r.", ax=ax)
     fcst.yhat.plot(ax=ax)
     ax.fill_between(fcst.index, y1=lower, y2=upper, alpha=0.3)
+    ax.set_xlabel("")
+    
+def plot_grid_fcst(fcst, train, test, n_rows, n_cols, figsize):
+    f, axs = plt.subplots(n_rows, n_cols, figsize=figsize)
+    items = fcst.columns.get_level_values(0).drop_duplicates()
+    for item, ax in zip(items, np.ravel(axs)):
+        plot_fcst(fcst[item], train=train[item], test=test[item], ax=ax, title=item)
 
 def get_amount_info(df):
     amount_info = df.notna().sum().sort_values() / len(df)
